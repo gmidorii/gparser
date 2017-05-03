@@ -16,6 +16,9 @@ func main() {
 			fmt.Println(err)
 		}
 	}
+	if err := parse(`"hoge"+"hoge"`); err != nil {
+		fmt.Println(err)
+	}
 }
 
 func parse(str string) error {
@@ -33,7 +36,7 @@ func parse(str string) error {
 	// })
 
 	if e, ok := expr.(*ast.BinaryExpr); ok {
-		if v, err := eval(e); err == nil {
+		if v, err := evalBinary(e); err == nil {
 			fmt.Println(v)
 			return nil
 		}
@@ -42,22 +45,24 @@ func parse(str string) error {
 	return errors.New("string is not *ast.BinaryExpr")
 }
 
-func eval(expr *ast.BinaryExpr) (constant.Value, error) {
-	xLit, ok := expr.X.(*ast.BasicLit)
-	if !ok {
+func evalBinary(expr *ast.BinaryExpr) (constant.Value, error) {
+	x, err := evalExpr(expr.X)
+	if err != nil {
 		return constant.MakeUnknown(), errors.New("left operand faild")
 	}
-
-	yLit, ok := expr.Y.(*ast.BasicLit)
-	if !ok {
+	y, err := evalExpr(expr.Y)
+	if err != nil {
 		return constant.MakeUnknown(), errors.New("right operand faild")
 	}
-
-	x := evalBasicLit(xLit)
-	y := evalBasicLit(yLit)
 	return constant.BinaryOp(x, expr.Op, y), nil
 }
 
-func evalBasicLit(expr *ast.BasicLit) constant.Value {
-	return constant.MakeFromLiteral(expr.Value, expr.Kind, 0)
+func evalExpr(expr ast.Expr) (constant.Value, error) {
+	switch e := expr.(type) {
+	case *ast.BinaryExpr:
+		return evalBinary(e)
+	case *ast.BasicLit:
+		return constant.MakeFromLiteral(e.Value, e.Kind, 0), nil
+	}
+	return constant.MakeUnknown(), errors.New("unknown node")
 }
