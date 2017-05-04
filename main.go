@@ -12,37 +12,26 @@ func main() {
 	ops := []string{"+", "-", "*", "/"}
 
 	for _, v := range ops {
-		if err := parse("10" + v + "2"); err != nil {
+		v, err := parse("10" + v + "2")
+		if err != nil {
 			fmt.Println(err)
 		}
-	}
-	if err := parse(`"hoge"+"hoge"`); err != nil {
-		fmt.Println(err)
+		fmt.Println(v)
 	}
 }
 
-func parse(str string) error {
+func parse(str string) (string, error) {
 	fmt.Println(str)
 	expr, err := parser.ParseExpr(str)
 	if err != nil {
-		return err
+		return "", err
 	}
 
-	// ast.Inspect(expr, func(n ast.Node) bool {
-	// 	if n != nil {
-	// 		fmt.Printf("%[1]v(%[1]T)\n", n)
-	// 	}
-	// 	return true
-	// })
-
-	if e, ok := expr.(*ast.BinaryExpr); ok {
-		if v, err := evalBinary(e); err == nil {
-			fmt.Println(v)
-			return nil
-		}
-		return err
+	v, err := evalExpr(expr)
+	if err != nil {
+		return "", err
 	}
-	return errors.New("string is not *ast.BinaryExpr")
+	return v.String(), nil
 }
 
 func evalBinary(expr *ast.BinaryExpr) (constant.Value, error) {
@@ -57,10 +46,23 @@ func evalBinary(expr *ast.BinaryExpr) (constant.Value, error) {
 	return constant.BinaryOp(x, expr.Op, y), nil
 }
 
+func evalUnary(expr *ast.UnaryExpr) (constant.Value, error) {
+	x, err := evalExpr(expr.X)
+	if err != nil {
+		return constant.MakeUnknown(), err
+	}
+
+	return constant.UnaryOp(expr.Op, x, 0), nil
+}
+
 func evalExpr(expr ast.Expr) (constant.Value, error) {
 	switch e := expr.(type) {
+	case *ast.ParenExpr:
+		return evalExpr(e.X)
 	case *ast.BinaryExpr:
 		return evalBinary(e)
+	case *ast.UnaryExpr:
+		return evalUnary(e)
 	case *ast.BasicLit:
 		return constant.MakeFromLiteral(e.Value, e.Kind, 0), nil
 	}
