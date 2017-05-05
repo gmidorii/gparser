@@ -1,11 +1,14 @@
 package main
 
 import (
+	"bufio"
 	"errors"
 	"fmt"
 	"go/ast"
 	"go/constant"
 	"go/parser"
+	"io"
+	"os"
 )
 
 func main() {
@@ -18,10 +21,11 @@ func main() {
 		}
 		fmt.Println(v)
 	}
+
+	repl(os.Stdin)
 }
 
 func parse(str string) (string, error) {
-	fmt.Println(str)
 	expr, err := parser.ParseExpr(str)
 	if err != nil {
 		return "", err
@@ -67,4 +71,31 @@ func evalExpr(expr ast.Expr) (constant.Value, error) {
 		return constant.MakeFromLiteral(e.Value, e.Kind, 0), nil
 	}
 	return constant.MakeUnknown(), errors.New("unknown node")
+}
+
+func repl(r io.Reader) {
+	s := bufio.NewScanner(r)
+	for {
+		fmt.Print(">")
+		if !s.Scan() {
+			break
+		}
+
+		l := s.Text()
+		switch {
+		case l == "exit":
+			return
+		default:
+			r, err := parse(l)
+			if err != nil {
+				fmt.Println("Error:", err)
+				continue
+			}
+			fmt.Println(r)
+		}
+	}
+
+	if err := s.Err(); err != nil {
+		fmt.Println("Error:", err)
+	}
 }
