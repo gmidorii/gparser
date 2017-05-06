@@ -11,17 +11,10 @@ import (
 	"os"
 )
 
+var idents = []*ast.Ident{}
+
+// copy from "http://qiita.com/tenntenn/items/a312d2c5381e36cf4cd3"
 func main() {
-	ops := []string{"+", "-", "*", "/"}
-
-	for _, v := range ops {
-		v, err := parse("10" + v + "2")
-		if err != nil {
-			fmt.Println(err)
-		}
-		fmt.Println(v)
-	}
-
 	repl(os.Stdin)
 }
 
@@ -30,6 +23,7 @@ func parse(str string) (string, error) {
 	if err != nil {
 		return "", err
 	}
+	print(expr)
 
 	v, err := evalExpr(expr)
 	if err != nil {
@@ -59,6 +53,14 @@ func evalUnary(expr *ast.UnaryExpr) (constant.Value, error) {
 	return constant.UnaryOp(expr.Op, x, 0), nil
 }
 
+// func evalIdent(e *ast.Ident) (constant.Value, error) {
+// 	for _, v := range idents {
+// 		if v.Name == e.Name {
+// 			return
+// 		}
+// 	}
+// }
+
 func evalExpr(expr ast.Expr) (constant.Value, error) {
 	switch e := expr.(type) {
 	case *ast.ParenExpr:
@@ -67,6 +69,8 @@ func evalExpr(expr ast.Expr) (constant.Value, error) {
 		return evalBinary(e)
 	case *ast.UnaryExpr:
 		return evalUnary(e)
+	case *ast.Ident:
+		// return evalIdent(e)
 	case *ast.BasicLit:
 		return constant.MakeFromLiteral(e.Value, e.Kind, 0), nil
 	}
@@ -98,4 +102,14 @@ func repl(r io.Reader) {
 	if err := s.Err(); err != nil {
 		fmt.Println("Error:", err)
 	}
+}
+
+// print is ast structure printing
+func print(expr ast.Expr) {
+	ast.Inspect(expr, func(n ast.Node) bool {
+		if n != nil {
+			fmt.Printf("%[1]v(%[1]T)\n", n)
+		}
+		return true
+	})
 }
