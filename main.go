@@ -53,13 +53,27 @@ func evalUnary(expr *ast.UnaryExpr) (constant.Value, error) {
 	return constant.UnaryOp(expr.Op, x, 0), nil
 }
 
-// func evalIdent(e *ast.Ident) (constant.Value, error) {
-// 	for _, v := range idents {
-// 		if v.Name == e.Name {
-// 			return
-// 		}
-// 	}
-// }
+func evalIdent(e *ast.Ident) (constant.Value, error) {
+	var u ast.Ident = ast.Ident{}
+	var using *ast.Ident = &u
+	for _, v := range idents {
+		if v.Name == e.Name {
+			using = v
+			break
+		}
+	}
+
+	if using.Name == "" {
+		using = e
+	}
+
+	switch e.Obj.Kind {
+	case ast.Var:
+		fmt.Println(e)
+	}
+
+	return constant.MakeUnknown(), errors.New("Error: Idents")
+}
 
 func evalExpr(expr ast.Expr) (constant.Value, error) {
 	switch e := expr.(type) {
@@ -70,7 +84,7 @@ func evalExpr(expr ast.Expr) (constant.Value, error) {
 	case *ast.UnaryExpr:
 		return evalUnary(e)
 	case *ast.Ident:
-		// return evalIdent(e)
+		return evalIdent(e)
 	case *ast.BasicLit:
 		return constant.MakeFromLiteral(e.Value, e.Kind, 0), nil
 	}
